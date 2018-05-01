@@ -22,6 +22,8 @@
 #include <Adafruit_SHT31.h>
 #include <SoftwareSerial.h>
 #include <XBee.h>
+#include <JeeLib.h>
+ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
 const int SLEEP_PIN = 4;
 
@@ -30,9 +32,7 @@ Adafruit_SHT31 sht31 = Adafruit_SHT31();
 SoftwareSerial ss_xbee(2, 3); // RX, TX
 XBee xbee = XBee();
 
-void setup() {
-  //Serial.begin(9600);
-  
+void setup() {  
   // SHT31
   sht31.begin(0x44);
 
@@ -52,6 +52,8 @@ void loop() {
 
   // Show visually that we are reading/emitting
   digitalWrite(LED_BUILTIN, HIGH);
+  
+  delay(200);
     
   float t = sht31.readTemperature();
   float h = sht31.readHumidity();
@@ -59,9 +61,6 @@ void loop() {
   if (!isnan(t) && !isnan(h)) {
     String s = String(t) + ";" + String(h);
     
-    //Serial.println(s);
-    //Serial.println(s.length());
-
     uint8_t data[s.length()+1];
     s.getBytes(data, sizeof(data));
     ZBTxRequest f = ZBTxRequest(XBeeAddress64(), data, sizeof(data));
@@ -70,7 +69,11 @@ void loop() {
     //Serial.println("Failed to read temperature or humidity");
   }
 
+  // Avoid problems because we enter too early sleepmode? anyway, 
+  // without that, the message is send every seconds
+  delay(200);
+
   digitalWrite(LED_BUILTIN, LOW);
   digitalWrite(SLEEP_PIN, HIGH);
-  delay(5000);
+  Sleepy::loseSomeTime(57300);
 }
